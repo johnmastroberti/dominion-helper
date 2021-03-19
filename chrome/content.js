@@ -1,4 +1,3 @@
-
 class Player {
   constructor(name) {
     this.name = name
@@ -33,6 +32,21 @@ class Player {
     return total
   }
 
+  get_deck() {
+    var result = {}
+    for (const [card, count] of this.deck)
+      result[card] = count
+    return result
+  }
+
+}
+
+function flatten_players(player_map) {
+  var result = {}
+  for (const [key, value] of player_map)
+    result[key] = value.get_deck()
+
+  return result
 }
 
 
@@ -90,10 +104,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   }
 
   console.log(players)
+  console.log(flatten_players(players))
 
   // Return data to popup
 
-  sendResponse({first: first_player, player_map: players})
+  sendResponse({first: first_player,
+    player_list: flatten_players(players)})
 
 
 })
