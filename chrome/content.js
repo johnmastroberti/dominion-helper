@@ -49,6 +49,39 @@ function flatten_players(player_map) {
   return result
 }
 
+function stringContains(str, search) {
+  return str.indexOf(search) != -1;
+}
+
+function extractCardsFromSpans(log_line) {
+  // Checks each span in the log line
+  // If the span names a card, parsed out the card name and quantity
+  // Returns the object { player: playerName, cards: [{card: card1, count: count1}, ...]}
+  let results = [];
+  // First, grab the player name
+  const playerName = log_line.innerText[0];
+  // Check each span
+  for (child of log_line.children[0].children) {
+    if (child.nodeName == "SPAN" && child.attributes.onmousedown) {
+      // Grab the card name
+      const mousedown = child.attributes.onmousedown.value;
+      const mousedownSections = mousedown.split("'");
+      if (mousedownSections[0] != "publicStudyRequest(event, ") continue;
+      const cardName = mousedownSections[1];
+
+      // Determine the count
+      const countText = child.innerText.split(' ')[0];
+      let number = Number(countText);
+      if (!number) number = 1;
+
+      // Add it to the results array
+      results.push({card: cardName, count: number});
+    }
+  }
+
+  return {player: playerName, cards: results};
+}
+
 
 console.log("Dominion Helper")
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
@@ -62,54 +95,72 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
   // Parse initial game state
   for (ix = 0; ix<log_lines.length; ix++) {
-    const line = log_lines[ix].innerText
+    const line = log_lines[ix];
 
-    const re = new RegExp("([a-zA-Z]) starts with ([0-9]|a|an) ([a-zA-Z ]*)")
+    const results = extractCardsFromSpans(log_lines[ix]);
 
-    const match = line.match(re)
-
-    if (match != null) {
-      if (!players.has(match[1])) {
-        players.set(match[1], new Player(match[1]))
+    if (stringContains(line.innerText, "starts with") && results.cards.length != 0) {
+      let pname = results.player;
+      if (!players.has(pname)) {
+        players.set(pname, new Player(pname))
       }
-      players.get(match[1]).gain_card(match[3], match[2])
+      for (let c of results.cards)
+        players.get(pname).gain_card(c.card, c.count)
     }
 
-    // console.log(line)
-    // console.log(match)
-
     const first_turn_re = new RegExp("Turn 1 - ([a-zA-Z0-9 ]+)")
-    const ftmatch = line.match(first_turn_re)
+    const ftmatch = line.innerText.match(first_turn_re)
     if (ftmatch != null) {
       first_player = ftmatch[1]
       break
     }
-    // console.log(line)
 
   }
-
-  // console.log(players)
 
   // Parse the rest of the log
+  let lastCardPlayed = "";
   for (; ix<log_lines.length; ix++) {
-    const line = log_lines[ix].innerText
+    const line = log_lines[ix];
 
-    const gains_re = new RegExp("([a-zA-Z]) .*gains ([0-9]+|a|an) ([a-zA-Z ]*)")
-
-    const match = line.match(gains_re)
-    if (match != null) {
-      players.get(match[1]).gain_card(match[3], match[2])
+    if (stringContains(line.innerText, "plays")) {
+      const r = extractCardsFromSpans(line);
+      if (r.cards.length != 0)
+        lastCardPlayed = r.cards[0].card;
     }
 
+    if (stringContains(line.innerText, "gains")) {
+      const results = extractCardsFromSpans(line);
+      if (results.cards.length == 0) continue;
+      for (let c of results.cards)
+        players.get(results.player).gain_card(c.card, c.count);
+    }
+
+    if (stringContains(line.innerText, "trashes")) {
+      const results = extractCardsFromSpans(line);
+      if (lastCardPlayed == "Lurker") continue;
+      console.log("DH: last card played was", lastCardPlayed);
+      if (results.cards.length == 0) continue;
+      for (let c of results.cards)
+        players.get(results.player).trash_card(c.card, c.count);
+    }
   }
-
-  console.log(players)
-  console.log(flatten_players(players))
-
-  // Return data to popup
 
   sendResponse({first: first_player,
     player_list: flatten_players(players)})
 
 
 })
+
+
+// // Testing out live response to card events
+// var observer = new MutationObserver(function(mutations) {
+//   for(let mutation of mutations) {
+//     for(let addedNode of mutation.addedNodes) {
+//       if (addedNode.parentNode.className == "game-log" && addedNode.nodeName == "DIV"
+//           && isGainsString(addedNode.innerHTML))
+//         console.log("DOMINION HELPER", addedNode.innerText);
+//     }
+//   }
+// });
+
+// observer.observe(document.body, {childList: true, subtree: true});

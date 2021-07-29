@@ -38,14 +38,15 @@ function displayDecks(resp) {
 
     // Table rows
     for (const card in player) {
-      const tr = document.createElement('tr')
-      const td1 = document.createElement('td')
-      const td2 = document.createElement('td')
-      td1.textContent = card
-      td2.textContent = "" + player[card]
-      tr.appendChild(td1)
-      tr.appendChild(td2)
-      table.appendChild(tr)
+      if (player[card] == 0) continue;
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td');
+      const td2 = document.createElement('td');
+      td1.textContent = card;
+      td2.textContent = "" + player[card];
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      table.appendChild(tr);
     }
 
 
@@ -61,8 +62,6 @@ function displayDecks(resp) {
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelector('button').addEventListener('click',
     onclick, false)
+}, false);
 
-
-
-
-}, false)
+onclick();
