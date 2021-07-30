@@ -1,10 +1,13 @@
+var playerColors = {};
+var cardColors = {};
+
 class Player {
   constructor(name) {
     this.name = name
     this.deck = new Map()
   }
 
-  gain_card(card, count) {
+  gain_card(card, count, color) {
     if (count == "a" || count == "an") {
       count = 1
     } else {
@@ -16,6 +19,7 @@ class Player {
     } else {
       this.deck.set(card, count)
     }
+    cardColors[card] = color
   }
 
   trash_card(card, count) {
@@ -40,6 +44,7 @@ class Player {
   }
 
 }
+
 
 function flatten_players(player_map) {
   var result = {}
@@ -74,8 +79,11 @@ function extractCardsFromSpans(log_line) {
       let number = Number(countText);
       if (!number) number = 1;
 
+      const cardColor = child.firstChild.style.getPropertyValue("color");
+      console.log("DH: cardColor = ", cardColor);
+
       // Add it to the results array
-      results.push({card: cardName, count: number});
+      results.push({card: cardName, count: number, color:cardColor});
     }
   }
 
@@ -102,10 +110,11 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (stringContains(line.innerText, "starts with") && results.cards.length != 0) {
       let pname = results.player;
       if (!players.has(pname)) {
-        players.set(pname, new Player(pname))
+        players.set(pname, new Player(pname));
+        playerColors[pname] = line.firstChild.firstChild.style.getPropertyValue("color");
       }
       for (let c of results.cards)
-        players.get(pname).gain_card(c.card, c.count)
+        players.get(pname).gain_card(c.card, c.count, c.color);
     }
 
     const first_turn_re = new RegExp("Turn 1 - ([a-zA-Z0-9 ]+)")
@@ -132,7 +141,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
       const results = extractCardsFromSpans(line);
       if (results.cards.length == 0) continue;
       for (let c of results.cards)
-        players.get(results.player).gain_card(c.card, c.count);
+        players.get(results.player).gain_card(c.card, c.count, c.color);
     }
 
     if (stringContains(line.innerText, "trashes")) {
@@ -145,9 +154,10 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     }
   }
 
-  sendResponse({first: first_player,
-    player_list: flatten_players(players)})
+  console.log(cardColors);
 
+  sendResponse({first: first_player, pColors: playerColors,
+                cColors: cardColors, player_list: flatten_players(players)})
 
 })
 
