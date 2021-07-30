@@ -174,3 +174,4 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 // });
 
 // observer.observe(document.body, {childList: true, subtree: true});
+
