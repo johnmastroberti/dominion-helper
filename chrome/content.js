@@ -58,6 +58,13 @@ function stringContains(str, search) {
   return str.indexOf(search) != -1;
 }
 
+function stringContainsAny(str, searches) {
+  for (s of searches) {
+    if (stringContains(str, s)) return true;
+  }
+  return false;
+}
+
 function extractCardsFromSpans(log_line) {
   // Checks each span in the log line
   // If the span names a card, parsed out the card name and quantity
@@ -89,6 +96,50 @@ function extractCardsFromSpans(log_line) {
 
   return {player: playerName, cards: results};
 }
+
+
+
+function isBoonOrHex(cardName) {
+  const BoonsAndHexes = [
+    "The Earth's Gift",
+    "The Field's Gift",
+    "The Flame's Gift",
+    "The Forest's Gift",
+    "The Moon's Gift",
+    "The Mountain's Gift",
+    "The River's Gift",
+    "The Sea's Gift",
+    "The Sky's Gift",
+    "The Sun's Gift",
+    "The Swamp's Gift",
+    "The Wind's Gift",
+    "Bad Omens",
+    "Delusion",
+    "Envy",
+    "Famine",
+    "Fear",
+    "Greed",
+    "Haunting",
+    "Locusts",
+    "Misery",
+    "Plague",
+    "Poverty",
+    "War",
+    "Deluded",
+    "Envious",
+    "Lost in the Woods",
+    "Miserable",
+    "Twice Miserable"
+  ];
+  return (BoonsAndHexes.indexOf(cardName) != -1);
+}
+
+
+function isKingdomTrasher(cardName) {
+  const kTrashers = ["Lurker", "Gladiator", "Salt The Earth"];
+  return (kTrashers.indexOf(cardName) != -1);
+}
+
 
 
 console.log("Dominion Helper")
@@ -127,29 +178,31 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   }
 
   // Parse the rest of the log
-  let lastCardPlayed = "";
+  let lastCardPlayedOrBought = "";
   for (; ix<log_lines.length; ix++) {
     const line = log_lines[ix];
 
-    if (stringContains(line.innerText, "plays")) {
+    if (stringContainsAny(line.innerText, ["plays", "buys"])) {
       const r = extractCardsFromSpans(line);
       if (r.cards.length != 0)
-        lastCardPlayed = r.cards[0].card;
+        lastCardPlayedOrBought = r.cards[0].card;
     }
 
-    if (stringContains(line.innerText, "gains")) {
+    if (stringContainsAny(line.innerText, ["gains", "receives"])) {
       const results = extractCardsFromSpans(line);
       if (results.cards.length == 0) continue;
-      for (let c of results.cards)
+      for (const c of results.cards) {
+        if (isBoonOrHex(c.card)) continue;
         players.get(results.player).gain_card(c.card, c.count, c.color);
+      }
     }
 
-    if (stringContains(line.innerText, "trashes")) {
+    if (stringContainsAny(line.innerText, ["trashes", "returns"])) {
       const results = extractCardsFromSpans(line);
-      if (lastCardPlayed == "Lurker") continue;
-      console.log("DH: last card played was", lastCardPlayed);
+      if (isKingdomTrasher(lastCardPlayedOrBought)) continue;
+      console.log("DH: last card played or bought was", lastCardPlayedOrBought);
       if (results.cards.length == 0) continue;
-      for (let c of results.cards)
+      for (const c of results.cards)
         players.get(results.player).trash_card(c.card, c.count);
     }
   }
