@@ -586,33 +586,90 @@ var cardCosts = {
   "Alliance": 10,
   "Populate": 10,
   }
-function onclick() {
+function onPageLoad() {
   chrome.tabs.query({currentWindow: true, active: true},
     function (tabs) {
       chrome.tabs.sendMessage(tabs[0].id, 'hi', displayDecks);
     })
 }
 
+let sort_method = "Cost";
+
+let cardColors = {};
+
+const sortingFunctions = {
+  "Cost": (x,y) => {
+      if (cardCosts[x] > cardCosts[y]) {
+        return -1;
+      } else if (cardCosts[x] < cardCosts[y]) {
+        return 1;
+      } else {
+        if (x > y) return 1;
+        else if (x < y) return -1;
+        else return 0;
+      }
+    },
+  "Alphabetically": (x,y) => {
+      if (x > y) return 1;
+      else if (x < y) return -1;
+      else return 0;
+    },
+  "Type": (x,y) => {
+      if (cardColors[x] > cardColors[y]) return 1;
+      else if (cardColors[x] < cardColors[y]) return -1;
+      else return 0;
+    }
+};
+
+
 function displayDecks(resp) {
   // Cleanup
-  oldfp = document.getElementById("first player");
-  if (oldfp != null)
-    oldfp.remove();
+  let oldBigDiv = document.getElementById("content-area");
+  if (oldBigDiv != null)
+    oldBigDiv.remove();
 
-  olddecks = document.getElementById("decks");
-  if (olddecks != null)
-    olddecks.remove();
+  // Outer div
+  const bigDiv = document.createElement('div');
+  bigDiv.id = "content-area";
+  document.body.appendChild(bigDiv);
 
   // First player
   const fp_display = document.createElement('p');
   fp_display.textContent = resp.first;
-  fp_display.id = "first player";
-  document.body.appendChild(fp_display);
+  fp_display.id = "first-player";
+  bigDiv.appendChild(fp_display);
+
+  // Sort function picker
+  const form = document.createElement('form');
+  const sort_label = document.createElement('label');
+  sort_label.for = "sort_picker";
+  sort_label.textContent = "Sorting method: ";
+  form.appendChild(sort_label);
+
+  const sort_picker = document.createElement('select');
+  sort_picker.id = "sort_picker";
+  const sort_options = ["Cost", "Alphabetically", "Type"];
+  for (const opt of sort_options) {
+    const opt_ele = document.createElement('option');
+    opt_ele.value = opt;
+    opt_ele.textContent = opt;
+    sort_picker.appendChild(opt_ele);
+  }
+  sort_picker.value = sort_method;
+  sort_picker.onchange = function() {
+    sort_method = sort_picker.value;
+    onPageLoad();
+  };
+  form.appendChild(sort_picker);
+  bigDiv.appendChild(form);
+
+
 
   // Deck display
   const div = document.createElement('div');
   div.id = "decks";
-  console.log(resp.player_list);
+  // console.log(resp.player_list);
+  cardColors = resp.cColors;
   let i=0;
   for (const player_name in resp.player_list) {
     const table = document.createElement('table');
@@ -632,17 +689,7 @@ function displayDecks(resp) {
     for (const card in player) {
       cardArr.push(card);
     }
-    cardArr.sort((x,y) => {
-      if (cardCosts[x] > cardCosts[y]) {
-        return -1;
-      } else if (cardCosts[x] < cardCosts[y]) {
-        return 1;
-      } else {
-        if (x > y) return 1;
-        else if (x < y) return -1;
-        else return 0;
-      }
-    });
+    cardArr.sort(sortingFunctions[sort_method]);
     for (const card of cardArr) {
       if (player[card] == 0) continue;
       const tr = document.createElement('tr');
@@ -663,10 +710,10 @@ function displayDecks(resp) {
 
   }
 
-  document.body.appendChild(div);
+  bigDiv.appendChild(div);
 
 }
 
-document.addEventListener('DOMContentLoaded', onclick, false);
+document.addEventListener('DOMContentLoaded', onPageLoad, false);
 
 // onclick();

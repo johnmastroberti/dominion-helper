@@ -4,6 +4,10 @@
 This browser extension shows you the makeup of your deck on [[dominion.games][dominion.games]].
 
 * Features
+** DONE Multiple options for card list sorting
+- By cost
+- Alphabetically
+- By type
 ** DONE Track starting cards
 ** DONE Track first player
 ** DONE Track gained cards
