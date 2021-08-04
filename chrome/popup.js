@@ -598,26 +598,28 @@ let sort_method = "Cost";
 let cardColors = {};
 
 const sortingFunctions = {
+  "Alphabetically": (x,y) => {
+      if (x > y) return 1;
+      else if (x < y) return -1;
+      else return 0;
+    },
   "Cost": (x,y) => {
       if (cardCosts[x] > cardCosts[y]) {
         return -1;
       } else if (cardCosts[x] < cardCosts[y]) {
         return 1;
       } else {
-        if (x > y) return 1;
-        else if (x < y) return -1;
-        else return 0;
+        return sortingFunctions["Alphabetically"](x,y);
       }
     },
-  "Alphabetically": (x,y) => {
-      if (x > y) return 1;
-      else if (x < y) return -1;
-      else return 0;
-    },
   "Type": (x,y) => {
-      if (cardColors[x] > cardColors[y]) return 1;
-      else if (cardColors[x] < cardColors[y]) return -1;
-      else return 0;
+      if (cardColors[x] < cardColors[y]) {
+        return -1;
+      } else if (cardColors[x] > cardColors[y]) {
+        return 1;
+      } else {
+        return sortingFunctions["Cost"](x,y);
+      }
     }
 };
 
