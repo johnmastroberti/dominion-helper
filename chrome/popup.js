@@ -628,6 +628,8 @@ function displayDecks(resp) {
   if (oldBigDiv != null)
     oldBigDiv.remove();
 
+  if (!resp) return;
+
   // Outer div
   const bigDiv = document.createElement('div');
   bigDiv.id = "content-area";
