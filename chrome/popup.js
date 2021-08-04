@@ -605,7 +605,7 @@ function displayDecks(resp) {
 
   // First player
   const fp_display = document.createElement('p');
-  fp_display.textContent = resp.first + " went first";
+  fp_display.textContent = resp.first;
   fp_display.id = "first player";
   document.body.appendChild(fp_display);
 

@@ -19,7 +19,8 @@ class Player {
     } else {
       this.deck.set(card, count)
     }
-    cardColors[card] = color
+    if (color)
+      cardColors[card] = color
   }
 
   trash_card(card, count) {
@@ -71,6 +72,9 @@ function extractCardsFromSpans(log_line) {
   // Returns the object { player: playerName, cards: [{card: card1, count: count1}, ...]}
   let results = [];
   // First, grab the player name
+  if (!log_line) return {};
+  if (!log_line.innerText) return {};
+  if (!log_line.children) return {};
   const playerName = log_line.innerText[0];
   // Check each span
   for (child of log_line.children[0].children) {
@@ -87,7 +91,6 @@ function extractCardsFromSpans(log_line) {
       if (!number) number = 1;
 
       const cardColor = child.firstChild.style.getPropertyValue("color");
-      console.log("DH: cardColor = ", cardColor);
 
       // Add it to the results array
       results.push({card: cardName, count: number, color:cardColor});
@@ -141,8 +144,12 @@ function isKingdomTrasher(cardName) {
 }
 
 
+function isKingdomExiler(cardName) {
+  const kExilers = ["Camel Train", "Transport", "Invest", "Enclave", "Way Of The Camel"];
+  return (kExilers.indexOf(cardName) != -1);
+}
 
-console.log("Dominion Helper")
+
 chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
   // Setup
   var log_lines = document.getElementsByClassName("log-line")
@@ -185,7 +192,7 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     if (stringContainsAny(line.innerText, ["plays", "buys"])) {
       const r = extractCardsFromSpans(line);
       if (r.cards.length != 0)
-        lastCardPlayedOrBought = r.cards[0].card;
+        lastCardPlayedOrBought = r.cards[r.cards.length-1].card;
     }
 
     if (stringContainsAny(line.innerText, ["gains", "receives"])) {
@@ -199,17 +206,30 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
     if (stringContainsAny(line.innerText, ["trashes", "returns"])) {
       const results = extractCardsFromSpans(line);
-      if (isKingdomTrasher(lastCardPlayedOrBought)) continue;
-      console.log("DH: last card played or bought was", lastCardPlayedOrBought);
       if (results.cards.length == 0) continue;
-      for (const c of results.cards)
-        players.get(results.player).trash_card(c.card, c.count);
+      for (const c of results.cards) {
+        if (!isKingdomTrasher(lastCardPlayedOrBought))
+          players.get(results.player).trash_card(c.card, c.count);
+        if (c.card == "Fortress")
+          players.get(results.player).gain_card(c.card, c.count);
+      }
     }
+
+
+    if (stringContains(line.innerText, "exiles")) {
+      const results = extractCardsFromSpans(line);
+      if (results.cards.length == 0) continue;
+      for (const c of results.cards) {
+        if (!isKingdomExiler(lastCardPlayedOrBought)) continue;
+        players.get(results.player).gain_card(c.card, c.count, c.color);
+      }
+    }
+
   }
 
-  console.log(cardColors);
+  const firstPlayerMessage = first_player ? first_player + " went first" : "The game has not yet started"
 
-  sendResponse({first: first_player, pColors: playerColors,
+  sendResponse({first: firstPlayerMessage, pColors: playerColors,
                 cColors: cardColors, player_list: flatten_players(players)})
 
 })
@@ -221,7 +241,6 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 //     for(let addedNode of mutation.addedNodes) {
 //       if (addedNode.parentNode.className == "game-log" && addedNode.nodeName == "DIV"
 //           && isGainsString(addedNode.innerHTML))
-//         console.log("DOMINION HELPER", addedNode.innerText);
 //     }
 //   }
 // });

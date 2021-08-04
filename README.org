@@ -17,7 +17,7 @@ Example:
 m returns a Page.
 m receives a Treasure Hunter.
 #+end_src
-** TODO Track exiled cards
+** DONE Track exiled cards
 If a card is exiled from your hand or deck, no action required
 If a card is exiled from the kingdom, it counts as a gain.
 Cards that exile from the kingdom:
@@ -26,7 +26,7 @@ Cards that exile from the kingdom:
 - Invest
 - Enclave
 - Way of the Camel
-** TODO Miscellaneous edge cases
+** DONE Miscellaneous edge cases
 *** DONE Cards that return to their pile
 Example:
 #+begin_src
@@ -41,7 +41,7 @@ m returns 2 Coppers to the Copper pile.
 L gains a Copper.
 #+end_src
 
-*** TODO Fortress
+*** DONE Fortress
 Example:
 #+begin_src
 m plays a Chapel.
